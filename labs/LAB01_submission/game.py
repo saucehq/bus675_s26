@@ -1,7 +1,7 @@
 """
 Lab 1: Text-Based Adventure RPG
 ================================
-YOUR NAME HERE
+Alexxis Saucedo 
 
 Build your game here! This file contains all the starter code from the lab notebook.
 Fill in the TODOs, add your own classes, and make it your own.
@@ -34,19 +34,31 @@ class Character:
     """Base class for all characters in the game."""
 
     def __init__(self, name, health, strength, defense):
-        # TODO: Initialize attributes
-        pass
+        self.name = name 
+        self.max_health = health 
+        self.health = health 
+        self.strength = strength 
+        self.defense = defense
 
     def is_alive(self):
-        # TODO: Return True if health > 0
-        pass
+        return self.health > 0
 
     def take_damage(self, amount):
-        # TODO: Reduce health, but don't go below 0
-        # Print a message about the damage taken
-        pass
+        self.health -= amount
+        if self.health < 0:
+            self.health = 0 
+        print(f"{self.name} takes {amount} damage! (HP:{self.health}/{self.max_health})")
+
+        if not self.is_alive():
+        print(f"{self.name} has been killed!")
+  
 
     def attack(self, target):
+        print(f"\n{self.name} attacks {target.name}!")
+
+        roll = roll_d20()
+        attack_total = roll + self.strength
+        print(f"Attack roll: {roll} + {self.strength} = {attack_total} vs DEF {target.defense}")
         # TODO: Implement d20 combat
         # 1. Roll d20, add strength
         # 2. Compare to target's defense
@@ -63,33 +75,47 @@ class Player(Character):
 
     def __init__(self, name):
         # TODO: Call parent __init__ with appropriate starting stats
-        # TODO: Initialize inventory as empty list
-        pass
-
-    def pick_up(self, item):
-        # TODO: Add item to inventory
-        pass
-
-    def show_inventory(self):
-        # TODO: Display all items in inventory
-        pass
-
+        def __init__(self, name):
+            super().__init__(name=name, health=30, strength=2, defense=12)
+            self.inventory = []
+    
+         def pick_up(self, item):
+            self.inventory.append(item)
+            print(f"{self.name} picked up: {item}")
+        def show_inventory(self):
+            print("\nInventory:")
+            if not self.inventory:
+                print(" (empty)")
+            else: 
+                for i, item in enumerate(self.inventory, start=1):
+                    print(f" {i}. {item}")
 
 class Enemy(Character):
     """Base class for enemies."""
 
     def __init__(self, name, health, strength, defense, xp_value=10):
-        # TODO: Call parent __init__
-        # TODO: Set xp_value
-        pass
+        super().__init__(name=name, health=health, strength=strength, defense=defense)
+        self.xp_value = xp_value
 
+class FriendlyVampire(Enemy):
+    def __init__(self):
+        super().__init__("Friendly Vampire", health=22, strength=4, health=22, defense=8, xp_value=10)
 
-# TODO: Create specific enemy types (Minion, Elite, Boss)
-# Example:
-# class Goblin(Enemy):
-#     def __init__(self):
-#         super().__init__("Goblin", health=15, strength=3, defense=8, xp_value=5)
-
+    def attack(self, target):
+        if random.random() < 0.40:
+                print(f"|n{self.name} hesitates... and does NOT attack.")
+                return
+            super().attack(target)
+class MeanVampire(Enemy):
+    def __init__(self):
+        super().__init__("Mean Vampire", health=26, strength=5, health=28, defense=12, xp_value=15)
+class Werewolf(Enemy):
+    def __init__(self):
+        super().__init__("Werewolf", health=28, strength=6, health=28, defense=12, xp_value=20)
+    
+    def attack(self, target):
+        print(f"|n{self.name} lunges viciously!")
+        super().attack(target)       
 
 # =============================================================================
 # Location Class
