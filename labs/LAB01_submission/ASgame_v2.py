@@ -50,7 +50,7 @@ class Character:
         print(f"{self.name} takes {amount} damage! (HP:{self.health}/{self.max_health})")
 
         if not self.is_alive():
-        print(f"{self.name} has been killed!")
+            print(f"{self.name} has been killed!")
   
 
     def attack(self, target):
@@ -59,36 +59,39 @@ class Character:
         roll = roll_d20()
         attack_total = roll + self.strength
         print(f"Attack roll: {roll} + {self.strength} = {attack_total} vs DEF {target.defense}")
-        # TODO: Implement d20 combat
-        # 1. Roll d20, add strength
-        # 2. Compare to target's defense
-        # 3. If hit, deal damage to target
-        # 4. Print combat messages!
-        pass
+        crit = (roll == 20)
+
+        if crit or attack_total >= target.defense:
+            damage = roll_dice(1, 8) + self.strength
+            if crit:
+                damage += roll_dice(1, 8)
+                print("CRITICAL HIT!")
+            print(f"Hit! {self.name} deals {damage} damage.")
+            target.take_damage(damage)
+        else:
+            print(f"Miss! {self.name} fails to hit {target.name}.")
 
     def __str__(self):
         return f"{self.name} (HP: {self.health}/{self.max_health})"
-
-
 class Player(Character):
     """The player character."""
-
-    def __init__(self, name):
         # TODO: Call parent __init__ with appropriate starting stats
-        def __init__(self, name):
-            super().__init__(name=name, health=30, strength=2, defense=12)
-            self.inventory = []
+    def __init__(self, name):
+        super().__init__(name=name, health=30, strength=2, defense=12)
+        self.inventory = []
+        self.vampire_progress = 0 
     
-         def pick_up(self, item):
-            self.inventory.append(item)
-            print(f"{self.name} picked up: {item}")
-        def show_inventory(self):
-            print("\nInventory:")
-            if not self.inventory:
-                print(" (empty)")
-            else: 
-                for i, item in enumerate(self.inventory, start=1):
-                    print(f" {i}. {item}")
+    def pick_up(self, item):
+        self.inventory.append(item)
+        print(f"{self.name} picked up: {item}")
+
+    def show_inventory(self):
+        print("\nInventory:")
+        if not self.inventory:
+            print(" (empty)")
+        else: 
+            for i, item in enumerate(self.inventory, start=1):
+                print(f" {i}. {item}")
 
 class Enemy(Character):
     """Base class for enemies."""
@@ -99,19 +102,19 @@ class Enemy(Character):
 
 class FriendlyVampire(Enemy):
     def __init__(self):
-        super().__init__("Friendly Vampire", health=22, strength=4, health=22, defense=8, xp_value=10)
+        super().__init__("Friendly Vampire", health=22, strength=4, defense=8, xp_value=10)
 
     def attack(self, target):
         if random.random() < 0.40:
                 print(f"|n{self.name} hesitates... and does NOT attack.")
                 return
-            super().attack(target)
+        super().attack(target)
 class MeanVampire(Enemy):
     def __init__(self):
-        super().__init__("Mean Vampire", health=26, strength=5, health=28, defense=12, xp_value=15)
+        super().__init__("Mean Vampire", health=26, strength=5, defense=12, xp_value=15)
 class Werewolf(Enemy):
     def __init__(self):
-        super().__init__("Werewolf", health=28, strength=6, health=28, defense=12, xp_value=20)
+        super().__init__("Werewolf", health=28, strength=6, defense=12, xp_value=20)
     
     def attack(self, target):
         print(f"|n{self.name} lunges viciously!")
@@ -124,12 +127,19 @@ class Werewolf(Enemy):
 class Location:
     """A location in the game world."""
 
-    def __init__(self, name, description):
+    def __init__(self, name, description, danger=0.2):
         self.name = name
         self.description = description
+        self.danger = danger
         self.connections = {}  # {"north": Location, "south": Location, etc.}
         self.enemies = []      # List of enemies in this location
         self.items = []        # List of items in this location
+
+    def add_connection(self, direction, location):
+        self.connections[direction] = location
+
+    def get_exits(self):
+        return list(self.connections.keys())
 
     def describe(self):
         """Print a full description of the location."""
@@ -137,70 +147,101 @@ class Location:
         print(f"📍 {self.name}")
         print(f"{'='*50}")
         print(self.description)
+        
+        #enemies
+        living = [e for e in self.enemies if e.is_alive()]
+        if living:
+            print("\n Enemies here:")
+            for e in living:
+                print(f"  - {e}")
+        else:
+            print("\n No enemies here.")
 
-        # TODO: Show enemies if present
-        # TODO: Show items if present
-        # TODO: Show available exits
+        # items
+        if self.items:
+            print("\n Items here:")
+            for item in self.items:
+                print(f"  - {item}")
+        else:
+            print("\n No items here.")
 
-    def get_exits(self):
-        """Return a list of available directions."""
-        return list(self.connections.keys())
-
-    def add_connection(self, direction, location):
-        """Connect this location to another."""
-        self.connections[direction] = location
-
+        # exits
+        exits = self.get_exits()
+        if exits:
+            print("\n Exits:")
+            for d in exits:
+                print(f"  - {d} → {self.connections[d].name}")
+        else:
+            print("\n No exits available.")
 
 # =============================================================================
 # World Builder
 # =============================================================================
 
 def create_world():
-    """Create and connect all locations. Returns the starting location."""
-
-    # Create locations
-    village = Location(
-        "The Village",
-        "A peaceful village with thatched-roof cottages. Smoke rises from chimneys."
-    )
-    forest = Location(
-        "Moonlit Forest",
-        "Tall trees block most of the sky, and pale moonlight spills across the path."
-    )
-    graveyard = Location(
-        "Old Graveyard",
-        "Cracked headstones lean at odd angles while cold wind whistles between them."
-    )
-    castle_gate = Location(
-        "Castle Gate",
-        "An iron gate stands before a dark stone castle, silent and imposing."
-    )
-    crypt = Location(
-        "Hidden Crypt",
-        "A damp underground chamber with worn carvings and the scent of earth."
+    forks_high = Location(
+        "Forks High School",
+        "A school in a small, rainy town. Everything is not as it seems.",
+        danger=0.25
     )
 
-    # Connect locations (remember to connect both ways!)
-    village.add_connection("north", forest)
-    forest.add_connection("south", village)
+    cullen_house = Location(
+        "Cullen House",
+        "Too perfect. Something must be off.",
+        danger=0.20
+    )
 
-    forest.add_connection("east", graveyard)
-    graveyard.add_connection("west", forest)
+    black_house = Location(
+        "Black House",
+        "Feels warm.",
+        danger=0.35
+    )
 
-    forest.add_connection("north", castle_gate)
-    castle_gate.add_connection("south", forest)
+    bellas_house = Location(
+        "Bella's House",
+        "Home. Safe (I think). Charlie is there.",
+        danger=0.10
+    )
 
-    graveyard.add_connection("down", crypt)
-    crypt.add_connection("up", graveyard)
+    woods = Location(
+        "The Woods",
+        "Dark, cold, and wet. Danger is all around.",
+        danger=0.60
+    )
 
-    # TODO: Add enemies to locations
-    # dungeon.enemies.append(Goblin())
+    # Connections
+    forks_high.add_connection("west", bellas_house)
+    forks_high.add_connection("east", black_house)
+    forks_high.add_connection("north", cullen_house)
+    forks_high.add_connection("south", woods)
 
-    # TODO: Add items to locations (optional)
+    bellas_house.add_connection("east", forks_high)
+    black_house.add_connection("west", forks_high)
+    cullen_house.add_connection("south", forks_high)
+    woods.add_connection("north", forks_high)
 
-    # Return the starting location
-    return village
+    # Items
+    bellas_house.items = ["Phone", "Pepper Spray"]
+    forks_high.items = ["Bandage"]
+    black_house.items = ["Wolf Totem"]
+    cullen_house.items = ["Cullen Ring"]
+    woods.items = ["Mystery Blood Vial"]
 
+    # Enemies
+    forks_high.enemies = [FriendlyVampire()]
+    woods.enemies = [MeanVampire()]
+    black_house.enemies = [Werewolf()]
+
+    locations = {
+        "Forks High School": forks_high,
+        "Cullen House": cullen_house,
+        "Black House": black_house,
+        "Bella's House": bellas_house,
+        "The Woods": woods,
+    }
+
+    start_location = forks_high
+    return locations, start_location
 
 # =============================================================================
 # Combat System
@@ -222,7 +263,7 @@ class Combat:
 
     def start(self):
         """Begin combat and run until someone wins/loses/flees."""
-        print(f"\n⚔️ COMBAT BEGINS! ⚔️")
+        print(f"\n COMBAT BEGINS! ")
         print(f"{self.player.name} vs {self.enemy.name}!")
 
         while self.state != Combat.COMBAT_END:
@@ -243,7 +284,7 @@ class Combat:
         if action == "attack":
             self.player.attack(self.enemy)
             if not self.enemy.is_alive():
-                print(f"\n🎉 {self.enemy.name} has been defeated!")
+                print(f"\n {self.enemy.name} has been defeated!")
                 self.state = Combat.COMBAT_END
             else:
                 self.state = Combat.ENEMY_TURN
@@ -266,7 +307,7 @@ class Combat:
         self.enemy.attack(self.player)
 
         if not self.player.is_alive():
-            print(f"\n💀 {self.player.name} has fallen!")
+            print(f"\n {self.player.name} has fallen!")
             self.state = Combat.COMBAT_END
         else:
             self.state = Combat.PLAYER_TURN
@@ -290,12 +331,12 @@ class Game:
 
     # Game states
     EXPLORING = "exploring"
-    IN_COMBAT = "in_combat"
     GAME_OVER = "game_over"
     VICTORY = "victory"
 
     def __init__(self):
         self.player = None
+        self.locations = {}
         self.current_location = None
         self.state = Game.EXPLORING
         self.game_running = True
@@ -304,7 +345,7 @@ class Game:
         """Initialize and start the game."""
         self.show_intro()
         self.create_player()
-        self.current_location = create_world()  # Your function from earlier
+        self.locations, self.current_location = create_world()  # Your function from earlier
         self.current_location.describe()
 
         # Main game loop
@@ -321,11 +362,18 @@ class Game:
     def show_intro(self):
         """Display the game introduction."""
         print("\n" + "="*60)
-        print("         YOUR GAME TITLE HERE")
-        print("="*60)
-        print("\nYour epic intro text goes here...")
-        print("Set the scene! What's happening? Why is the player here?")
-        print("\n" + "="*60)
+    print("\nThe rain never stops in Forks, Washington.")
+    print("You’ve just arrived to start a new life… but something feels off.")
+    print("Pale students who never eat. Golden eyes watching from the woods.")
+    print("Low growls echoing at night.")
+
+    print("\nRumors whisper of vampires and werewolves.")
+    print("If you survive long enough, you might become one of them.")
+    print("Find the Cullen Ring. Embrace immortality.")
+    print("Or die trying.")
+
+    print("\n Survive. Transform. Marry your vampire love interest.")
+    print("=" * 60)
 
     def create_player(self):
         """Create the player character."""
@@ -334,12 +382,11 @@ class Game:
         self.player = Player(name)
         print(f"\nWelcome, {name}! Your adventure begins...")
 
+
     def exploration_loop(self):
-        """Handle player input during exploration."""
         print("\nWhat do you do? (type 'help' for commands)")
         command = input("> ").lower().strip()
 
-        # Parse the command
         parts = command.split()
         if not parts:
             return
@@ -353,10 +400,9 @@ class Game:
             self.current_location.describe()
 
         elif action == "go" and len(parts) > 1:
-            direction = parts[1]
-            self.move(direction)
+            self.move(parts[1])
 
-        elif action in ["north", "south", "east", "west", "up", "down"]:
+        elif action in ["north", "south", "east", "west"]:
             self.move(action)
 
         elif action in ["fight", "attack"]:
@@ -365,6 +411,10 @@ class Game:
         elif action in ["inventory", "i"]:
             self.player.show_inventory()
 
+        elif action == "take" and len(parts) > 1:
+            item_name = " ".join(parts[1:])
+            self.take_item(item_name)
+
         elif action == "quit":
             print("Thanks for playing!")
             self.game_running = False
@@ -372,56 +422,73 @@ class Game:
         else:
             print("I don't understand that command. Type 'help' for options.")
 
+        self.check_victory()
+
     def move(self, direction):
-        """Move the player in the specified direction."""
         if direction in self.current_location.connections:
             self.current_location = self.current_location.connections[direction]
             self.current_location.describe()
-            # TODO: Check for automatic combat triggers?
         else:
             print(f"You can't go {direction} from here.")
 
+    def take_item(self, item_name):
+        # case-insensitive match
+        for item in list(self.current_location.items):
+            if item.lower() == item_name.lower():
+                self.current_location.items.remove(item)
+                self.player.pick_up(item)
+                return
+        print("That item isn't here.")
+
     def initiate_combat(self):
-        """Start combat with an enemy in the current location."""
         if not self.current_location.enemies:
             print("There's nothing to fight here.")
             return
 
-        enemy = self.current_location.enemies[0]  # Fight first enemy
+        enemy = self.current_location.enemies[0]
         battle = Combat(self.player, enemy)
         result = battle.start()
 
         if result == "victory":
             self.current_location.enemies.remove(enemy)
-            # TODO: Check for victory condition (e.g., boss defeated)
+            # small vampire progress reward for surviving fights
+            self.player.vampire_progress = min(100, self.player.vampire_progress + 20)
+            print(f" Vampire Progress: {self.player.vampire_progress}/100")
         elif result == "defeat":
             self.state = Game.GAME_OVER
 
+    def check_victory(self):
+        # Win: become vampire + have Cullen Ring
+        if self.player.vampire_progress >= 100 and "Cullen Ring" in self.player.inventory:
+            self.state = Game.VICTORY
+
     def show_help(self):
-        """Display available commands."""
-        print("\n📜 AVAILABLE COMMANDS:")
-        print("  go [direction] - Move in a direction (north, south, east, west)")
-        print("  look          - Examine your surroundings")
-        print("  fight         - Attack an enemy in this location")
-        print("  inventory     - Check your inventory")
-        print("  help          - Show this help message")
-        print("  quit          - Exit the game")
+        print("\n AVAILABLE COMMANDS:")
+        print("  go [direction] - Move (north, south, east, west)")
+        print("  look          - Examine surroundings")
+        print("  fight         - Attack an enemy here")
+        print("  take [item]   - Pick up an item here")
+        print("  inventory (i) - Check inventory")
+        print("  help          - Show commands")
+        print("  quit          - Exit game")
+        print("\n WIN: Vampire Progress >= 100 AND you have the Cullen Ring.")
+        print(" LOSE: Your HP hits 0.")
 
     def show_game_over(self):
-        """Display game over message."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("                    GAME OVER")
-        print("="*60)
+        print("=" * 60)
         print("\nYou have fallen. The adventure ends here...")
         print("\n(But you can always try again!)")
 
     def show_victory(self):
-        """Display victory message."""
-        print("\n" + "="*60)
-        print("                    🎉 VICTORY! 🎉")
-        print("="*60)
-        print("\nCongratulations! You have completed your quest!")
-        # TODO: Add your custom victory text
+        print("\n" + "=" * 60)
+        print("                     VICTORY! 💍")
+        print("=" * 60)
+        print("\nYou become a vampire and slip on the Cullen Ring...")
+        print("You marry your vampire love interest. Forks will never be the same.")
+
+
 
 
 # =============================================================================
