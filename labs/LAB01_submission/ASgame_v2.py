@@ -377,10 +377,10 @@ class Game:
 
     def create_player(self):
         """Create the player character."""
-        print("\nWhat is your name, adventurer?")
-        name = input("> ")
-        self.player = Player(name)
-        print(f"\nWelcome, {name}! Your adventure begins...")
+        self.player = Player("Bella Swan")
+        print("\nYou are Bella Swan.")
+        print("You just moved to the rainy town of Forks, Washington.")
+        print("But something strange is happening here...")
 
 
     def exploration_loop(self):
