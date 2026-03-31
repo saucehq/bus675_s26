@@ -1,8 +1,8 @@
 # Lab 2 Submission README
 
 ## Student Information
-- Name: [Your Name]
-- Date: [YYYY-MM-DD]
+- Name: [Alexxis Saucedo]
+- Date: [2000-05-15]
 
 ## Deliverables Included
 - `inference_api/Dockerfile`

@@ -43,6 +43,7 @@ LOG_PATH = Path("/logs/classifications.jsonl")
 print("Loading MobileNetV2 model...")
 model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
 model.eval()  # Set to evaluation mode (disables dropout, etc.)
+model_loaded = True
 print("Model loaded successfully!")
 
 # Load ImageNet class labels
@@ -209,14 +210,50 @@ async def predict(
 # ============================================================================
 # TODO: Add /health and /stats endpoints (Part 4)
 # ============================================================================
-# Your code here!
-# 
-# /health should return: {"status": "healthy", "model_loaded": true}
-#
-# /stats should read from the log file and return statistics like:
-# - Total items processed
-# - Breakdown by classification
-# - Average confidence score
+@app.get("/health")
+def health():
+    return {
+        "status": "healthy",
+        "model_loaded": model_loaded
+    }
+
+
+@app.get("/stats")
+def stats():
+    if not LOG_PATH.exists():
+        return {
+            "total_processed": 0,
+            "breakdown_by_classification": {},
+            "average_confidence": None
+        }
+
+    entries = []
+    with open(LOG_PATH, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                entries.append(json.loads(line))
+
+    if not entries:
+        return {
+            "total_processed": 0,
+            "breakdown_by_classification": {},
+            "average_confidence": None
+        }
+
+    breakdown = {}
+    total_confidence = 0.0
+
+    for entry in entries:
+        label = entry.get("top_prediction", "unknown")
+        breakdown[label] = breakdown.get(label, 0) + 1
+        total_confidence += entry.get("confidence", 0.0)
+
+    return {
+        "total_processed": len(entries),
+        "breakdown_by_classification": breakdown,
+        "average_confidence": round(total_confidence / len(entries), 2)
+    }
 
 
 if __name__ == "__main__":
