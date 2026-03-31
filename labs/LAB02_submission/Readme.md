@@ -1,8 +1,8 @@
 # Lab 2 Submission README
 
 ## Student Information
-- Name: [Alexxis Saucedo]
-- Date: [2000-05-15]
+- Name: Alexxis Saucedo
+- Date: 2026-03-31
 
 ## Deliverables Included
 - `inference_api/Dockerfile`
@@ -15,28 +15,28 @@
 
 ### Inference API
 ```bash
-[PUT YOUR DOCKER BUILD COMMAND FOR INFERENCE API IMAGE HERE]
+docker build -t congo-inference-api ./inference_api
 ```
 
 ### Preprocessor
 ```bash
-[PUT YOUR DOCKER BUILD COMMAND FOR PREPROCESSOR IMAGE HERE]
+docker build -t congo-preprocessor ./preprocessor
 ```
 
 ## Docker Run Commands Used
 
 ### Inference API Container
 ```bash
-[PUT YOUR DOCKER RUN COMMAND FOR INFERENCE API CONTAINER HERE]
+docker run -d --name inference-api -p 8000:8000 -v C:\Users\Lexi\logs:/logs congo-inference-api
 ```
 
 ### Preprocessor Container
 ```bash
-[PUT YOUR DOCKER RUN COMMAND FOR PREPROCESSOR CONTAINER HERE]
+docker run -d --name preprocessor -v C:\Users\Lexi\incoming:/incoming -e API_URL=http://host.docker.internal:8000 -e PYTHONUNBUFFERED=1 congo-preprocessor
 ```
 
 ## Brief Explanation: How the Containers Communicate
-[Write 3-6 sentences here.]
+The preprocessor container watches the incoming folder for new images and send them to the inference API using HTTP POST requests to the predict endpoint. I pass in the API_URL environment variable when I run the container. For data persistence, both containers use binds mounts so the incoming and logs folders live on the host and don't disappear when the containers stop or restart. 
 
 Points to cover:
 - Which container calls which endpoint.
