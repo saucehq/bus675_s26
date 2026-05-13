@@ -1,14 +1,13 @@
 
-
 | Genre | Part A Accuracy | Part B Accuracy |
 |---|---|---|
-| Animation | | |
-| Comedy | | |
-| Documentary | | |
-| Horror | | |
-| Romance | | |
-| Sci-Fi | | |
-| **Overall** | | |
+| Animation | 0.880 | 0.807 |
+| Comedy | 0.733 | 0.700 |
+| Documentary | 0.827 | 0.827 |
+| Horror | 0.673 | 0.627 |
+| Romance | 0.587 | 0.587 |
+| Sci-Fi | 0.560 | 0.627 |
+| **Overall** | **0.710** | **0.696** |
 
 Then address these questions:
 
